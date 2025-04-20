@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package crypto;
+
+option go_package = "github.com/luizgbraga/crypto-go/pkg/cryptogrpc";
+
+service CryptoService {
+    rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse);
+    rpc GetUsers(EmptyRequest) returns (UserList);
+    rpc RegisterPublicKey(RegisterPublicKeyRequest) returns (RegisterPublicKeyResponse);
+    rpc GetPublicKey(GetPublicKeyRequest) returns (GetPublicKeyResponse);
+    rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+    rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
+}
+
+message EmptyRequest {}
+
+message RegisterUserRequest {
+    string user_id = 1;
+    string name = 2;
+}
+
+message RegisterUserResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message User {
+    string user_id = 1;
+    string name = 2;
+    bool online = 3;
+}
+
+message UserList {
+    repeated User users = 1;
+}
+
+message RegisterPublicKeyRequest {
+    string user_id = 1;
+    string algorithm = 2;
+    bytes key_data = 3;
+}
+
+message RegisterPublicKeyResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message GetPublicKeyRequest {
+    string user_id = 1;
+    string algorithm = 2;
+}
+
+message GetPublicKeyResponse {
+    bool success = 1;
+    string message = 2;
+    bytes key_data = 3;
+}
+
+message SendMessageRequest {
+    string sender_id = 1;
+    string recipient_id = 2;
+    bytes encrypted_message = 3;
+    string algorithm = 4;
+}
+
+message SendMessageResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message Message {
+    string sender_id = 1;
+    bytes encrypted_message = 2;
+    string algorithm = 3;
+    int64 timestamp = 4;
+}
+
+message GetMessagesRequest {
+    string user_id = 1;
+}
+
+message GetMessagesResponse {
+    repeated Message messages = 1;
+}
