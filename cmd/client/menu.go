@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/luizgbraga/crypto-go/internal/crypto"
+	"github.com/luizgbraga/crypto-go/internal/crypto/elgamal"
 	"github.com/luizgbraga/crypto-go/internal/crypto/rsa"
 	"github.com/luizgbraga/crypto-go/internal/keystore"
 	pb "github.com/luizgbraga/crypto-go/pkg/cryptogrpc"
@@ -19,7 +20,13 @@ const (
 	CmdExit        = "4"
 )
 
-func mainMenu(client pb.CryptoServiceClient, keyStore keystore.KeyStore, rsaProvider *rsa.RSAProvider, userID string) {
+func mainMenu(
+	client pb.CryptoServiceClient,
+	keyStore keystore.KeyStore,
+	rsaProvider *rsa.RSAProvider,
+	elgamalProvider *elgamal.ElGamalProvider,
+	userID string,
+) {
 	for {
 		fmt.Println("\nCommands:")
 		fmt.Printf("%s. List users\n", CmdListUsers)
@@ -33,7 +40,7 @@ func mainMenu(client pb.CryptoServiceClient, keyStore keystore.KeyStore, rsaProv
 		case CmdListUsers:
 			listUsers(client)
 		case CmdManageKeys:
-			manageKeysMenu(client, keyStore, rsaProvider, userID)
+			manageKeysMenu(client, keyStore, rsaProvider, elgamalProvider, userID)
 		case CmdSendMessage:
 			sendMessageMenu(client, rsaProvider, userID)
 		case CmdExit:
@@ -48,14 +55,22 @@ func mainMenu(client pb.CryptoServiceClient, keyStore keystore.KeyStore, rsaProv
 const (
 	DisplayKeyStore   = "1"
 	CreateRSAKey      = "2"
-	CmdManageKeysBack = "3"
+	CreateElGamalKey  = "3"
+	CmdManageKeysBack = "4"
 )
 
-func manageKeysMenu(client pb.CryptoServiceClient, keyStore keystore.KeyStore, rsaProvider *rsa.RSAProvider, userID string) {
+func manageKeysMenu(
+	client pb.CryptoServiceClient,
+	keyStore keystore.KeyStore,
+	rsaProvider *rsa.RSAProvider,
+	elgamalProvider *elgamal.ElGamalProvider,
+	userID string,
+) {
 	for {
 		fmt.Println("\nKey Management Commands:")
 		fmt.Printf("%s. Display key store\n", DisplayKeyStore)
 		fmt.Printf("%s. Create RSA key\n", CreateRSAKey)
+		fmt.Printf("%s. Create ElGamal key\n", CreateElGamalKey)
 		fmt.Printf("%s. Back\n", CmdManageKeysBack)
 
 		cmd := utils.Read("Enter command: ")
@@ -94,7 +109,7 @@ func manageKeysMenu(client pb.CryptoServiceClient, keyStore keystore.KeyStore, r
 				continue
 			}
 
-			err = rsaProvider.ImportFromPrimes(primeP, primeQ, selectedD)
+			err = rsaProvider.StoreKeyPair(primeP, primeQ, selectedD)
 			if err != nil {
 				fmt.Printf("Error creating key from primes: %v\n", err)
 				continue
@@ -123,6 +138,56 @@ func manageKeysMenu(client pb.CryptoServiceClient, keyStore keystore.KeyStore, r
 			}
 
 			fmt.Println("RSA key created successfully!")
+		case CreateElGamalKey:
+			primeP, err := utils.ReadPrime("Enter prime P: ")
+			if err != nil {
+				fmt.Println("Error: ", err)
+				continue
+			}
+
+			generatorG, err := utils.ReadBigInt("Enter generator G: ")
+			if err != nil {
+				fmt.Println("Error: ", err)
+				continue
+			}
+
+			secretX, err := utils.ReadBigInt("Enter secret X: ")
+			if err != nil {
+				fmt.Println("Error: ", err)
+				continue
+			}
+			if secretX.Cmp(&primeP) >= 0 {
+				fmt.Println("Error: X must be less than P")
+				continue
+			}
+
+			err = elgamalProvider.StoreKeyPair(primeP, generatorG, secretX)
+			if err != nil {
+				fmt.Printf("Error creating key from primes: %v\n", err)
+				continue
+			}
+
+			publicKeyBytes, err := elgamalProvider.GetPublicKey()
+			if err != nil {
+				fmt.Printf("Error getting public key: %v\n", err)
+				continue
+			}
+
+			resp, err := client.RegisterPublicKey(context.Background(), &pb.RegisterPublicKeyRequest{
+				UserId:    userID,
+				Algorithm: string(crypto.ElGamal),
+				KeyData:   publicKeyBytes,
+			})
+			if err != nil {
+				fmt.Printf("Error registering public key: %v\n", err)
+				continue
+			}
+			if !resp.Success {
+				fmt.Printf("Failed to register public key: %s\n", resp.Message)
+				continue
+			}
+
+			fmt.Println("ElGamal key created successfully!")
 		case CmdManageKeysBack:
 			fmt.Println("Returning to main menu")
 			return

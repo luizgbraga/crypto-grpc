@@ -3,7 +3,8 @@ package crypto
 type Algorithm string
 
 const (
-	RSA Algorithm = "RSA"
+	RSA     Algorithm = "RSA"
+	ElGamal Algorithm = "ElGamal"
 )
 
 type KeyStore interface {

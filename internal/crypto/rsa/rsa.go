@@ -16,7 +16,7 @@ type RSAKeyPair struct {
 	Q *big.Int
 }
 
-func CreateRSAKeyPairFromPrimes(p, q, d *big.Int) (*RSAKeyPair, error) {
+func CreateRSAKeyPair(p, q, d *big.Int) (*RSAKeyPair, error) {
 	if p == nil || q == nil || d == nil {
 		return nil, errors.New("p, q, and d must not be nil")
 	}

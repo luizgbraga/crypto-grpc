@@ -76,8 +76,8 @@ func (p *RSAProvider) GetPublicKey() ([]byte, error) {
 	return []byte(publicKeyStr), err
 }
 
-func (p *RSAProvider) ImportFromPrimes(primeP, primeQ, dValue big.Int) error {
-	keyPair, err := CreateRSAKeyPairFromPrimes(&primeP, &primeQ, &dValue)
+func (p *RSAProvider) StoreKeyPair(primeP, primeQ, dValue big.Int) error {
+	keyPair, err := CreateRSAKeyPair(&primeP, &primeQ, &dValue)
 	if err != nil {
 		return err
 	}

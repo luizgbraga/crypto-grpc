@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/luizgbraga/crypto-go/internal/crypto"
+	"github.com/luizgbraga/crypto-go/internal/crypto/elgamal"
 	"github.com/luizgbraga/crypto-go/internal/crypto/rsa"
 	"github.com/luizgbraga/crypto-go/internal/keystore"
 	pb "github.com/luizgbraga/crypto-go/pkg/cryptogrpc"
@@ -16,7 +17,7 @@ import (
 )
 
 func main() {
-	conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}
@@ -28,6 +29,7 @@ func main() {
 	keyStore := keystore.NewClientKeyStore(userID)
 
 	rsaProvider := rsa.NewRSAProvider(keyStore, userID)
+	elgamalProvider := elgamal.NewElGamalProvider(keyStore, userID)
 
 	resp, err := client.RegisterUser(context.Background(), &pb.RegisterUserRequest{
 		UserId: userID,
@@ -43,7 +45,7 @@ func main() {
 
 	go pollForMessages(client, userID, rsaProvider)
 
-	mainMenu(client, keyStore, rsaProvider, userID)
+	mainMenu(client, keyStore, rsaProvider, elgamalProvider, userID)
 }
 
 func getUser() (string, string) {

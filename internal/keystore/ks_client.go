@@ -77,6 +77,10 @@ func (ks *ClientKeyStore) Display() {
 	defer ks.mutex.Unlock()
 
 	fmt.Println("\nYour private keys:")
+	if len(ks.privateKeys) == 0 {
+		fmt.Println("No private keys found.")
+		return
+	}
 	for algo, key := range ks.privateKeys {
 		if len(key) == 0 {
 			fmt.Printf("%s: [unset]\n", algo)
