@@ -42,7 +42,7 @@ func mainMenu(
 		case CmdManageKeys:
 			manageKeysMenu(client, keyStore, rsaProvider, elgamalProvider, userID)
 		case CmdSendMessage:
-			sendMessageMenu(client, rsaProvider, userID)
+			sendMessageMenu(client, rsaProvider, elgamalProvider, userID)
 		case CmdExit:
 			fmt.Println("Exiting...")
 			return
@@ -197,40 +197,84 @@ func manageKeysMenu(
 	}
 }
 
-func sendMessageMenu(client pb.CryptoServiceClient, rsaProvider *rsa.RSAProvider, userID string) {
+const (
+	CmdSendRSAEncryptedMessage     = "1"
+	CmdSendElGamalEncryptedMessage = "2"
+	CmdSendMessageBack             = "3"
+)
+
+func sendMessageMenu(
+	client pb.CryptoServiceClient,
+	rsaProvider *rsa.RSAProvider,
+	elgamalProvider *elgamal.ElGamalProvider,
+	userID string,
+) {
 	for {
-		fmt.Println("\nSend Message:")
-		fmt.Println("(Enter 'back' to return to main menu)")
+		fmt.Println("\nSend MessageCommands:")
+		fmt.Printf("%s. Send RSA Encrypted message\n", CmdSendRSAEncryptedMessage)
+		fmt.Printf("%s. Create ElGamal Encrypted message\n", CmdSendElGamalEncryptedMessage)
+		fmt.Printf("%s. Back\n", CmdSendMessageBack)
 
-		recipient := utils.Read("Enter recipient ID: ")
-		if recipient == "back" {
-			return
-		}
+		cmd := utils.Read("Enter command: ")
 
-		_, err := rsaProvider.Encrypt([]byte("TEST"), recipient)
-		if err != nil {
-			resp, err := client.GetPublicKey(context.Background(), &pb.GetPublicKeyRequest{
-				UserId:    recipient,
-				Algorithm: string(crypto.RSA),
-			})
+		switch cmd {
+		case CmdSendRSAEncryptedMessage:
+			recipient := utils.Read("Enter recipient ID: ")
 
-			if err != nil || !resp.Success {
-				fmt.Printf("Cannot send message: Unable to get recipient's public key\n")
-				continue
-			}
-
-			err = rsaProvider.StorePublicKey(recipient, resp.KeyData)
+			_, err := rsaProvider.Encrypt([]byte("TEST"), recipient)
 			if err != nil {
-				fmt.Printf("Error storing recipient's public key: %v\n", err)
+				resp, err := client.GetPublicKey(context.Background(), &pb.GetPublicKeyRequest{
+					UserId:    recipient,
+					Algorithm: string(crypto.RSA),
+				})
+
+				if err != nil || !resp.Success {
+					fmt.Printf("Cannot send message: Unable to get recipient's public key\n")
+					continue
+				}
+
+				err = rsaProvider.StorePublicKey(recipient, resp.KeyData)
+				if err != nil {
+					fmt.Printf("Error storing recipient's public key: %v\n", err)
+					continue
+				}
+			}
+
+			message := utils.Read("Enter message: ")
+			sendRSAEncryptedMessage(client, rsaProvider, userID, recipient, message)
+		case CmdSendElGamalEncryptedMessage:
+			recipient := utils.Read("Enter recipient ID: ")
+
+			_, err := rsaProvider.Encrypt([]byte("TEST"), recipient)
+			if err != nil {
+				resp, err := client.GetPublicKey(context.Background(), &pb.GetPublicKeyRequest{
+					UserId:    recipient,
+					Algorithm: string(crypto.RSA),
+				})
+
+				if err != nil || !resp.Success {
+					fmt.Printf("Cannot send message: Unable to get recipient's public key\n")
+					continue
+				}
+
+				err = rsaProvider.StorePublicKey(recipient, resp.KeyData)
+				if err != nil {
+					fmt.Printf("Error storing recipient's public key: %v\n", err)
+					continue
+				}
+			}
+
+			k, err := utils.ReadBigInt("Enter k: ")
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
 				continue
 			}
-		}
 
-		message := utils.Read("Enter message: ")
-		if message == "back" {
+			message := utils.Read("Enter message: ")
+			sendElGamalEncryptedMessage(client, elgamalProvider, userID, recipient, message, k)
+		case CmdSendMessageBack:
+			fmt.Println("Returning to main menu")
 			return
 		}
-
-		sendMessage(client, rsaProvider, userID, recipient, message)
 	}
 }

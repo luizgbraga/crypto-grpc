@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/big"
 	"time"
 
 	"github.com/luizgbraga/crypto-go/internal/crypto"
@@ -99,7 +100,7 @@ func listUsers(client pb.CryptoServiceClient) {
 	}
 }
 
-func sendMessage(client pb.CryptoServiceClient, rsaProvider *rsa.RSAProvider, userID, recipientID, message string) {
+func sendRSAEncryptedMessage(client pb.CryptoServiceClient, rsaProvider *rsa.RSAProvider, userID, recipientID, message string) {
 	encrypted, err := rsaProvider.Encrypt([]byte(message), recipientID)
 	if err != nil {
 		fmt.Printf("Error encrypting message: %v\n", err)
@@ -111,6 +112,33 @@ func sendMessage(client pb.CryptoServiceClient, rsaProvider *rsa.RSAProvider, us
 		RecipientId:      recipientID,
 		EncryptedMessage: encrypted,
 		Algorithm:        string(crypto.RSA),
+	})
+
+	if err != nil {
+		fmt.Printf("Error sending message: %v\n", err)
+		return
+	}
+
+	if !resp.Success {
+		fmt.Printf("Failed to send message: %s\n", resp.Message)
+		return
+	}
+
+	fmt.Println("Message sent successfully!")
+}
+
+func sendElGamalEncryptedMessage(client pb.CryptoServiceClient, elgamalProvider *elgamal.ElGamalProvider, userID, recipientID, message string, k big.Int) {
+	encrypted, err := elgamalProvider.Encrypt([]byte(message), recipientID, k)
+	if err != nil {
+		fmt.Printf("Error encrypting message: %v\n", err)
+		return
+	}
+
+	resp, err := client.SendMessage(context.Background(), &pb.SendMessageRequest{
+		SenderId:         userID,
+		RecipientId:      recipientID,
+		EncryptedMessage: encrypted,
+		Algorithm:        string(crypto.ElGamal),
 	})
 
 	if err != nil {
